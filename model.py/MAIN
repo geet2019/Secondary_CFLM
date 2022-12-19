@@ -1,0 +1,48 @@
+# main block 
+import tensorflow.keras as tf
+from tensorflow.keras.layers import Conv2D
+from tensorflow.keras import Model
+from tensorflow.keras.initializers import *
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import backend as K
+
+
+class sec_struct(Conv2D):
+
+    def __init__(self,binary_code_bits,data_format,features,features_forward,max_range,min_range,reshape_layer,resolution_noise_scale,targets,skip_connect=0,position_specific_bias_size=0,collapsed_batch_norm=False,is_ca_feature=False,secstruct_multiplier=0.0,name='sec_struct'):
+        super(sec_struct, self).__init__(name=name)       
+        self._collapsed_batch_norm = collapsed_batch_norm
+        self._is_ca_feature = is_ca_feature
+        self._binary_code_bits = binary_code_bits
+        self._data_format = data_format
+        self._features = features
+        self._features_forward = features_forward
+        self._max_range = max_range
+        self._min_range = min_range
+        self._position_specific_bias_size = position_specific_bias_size
+        self._reshape_layer = reshape_layer
+        self._resolution_noise_scale = resolution_noise_scale
+        self._skip_connect = skip_connect
+        self._targets = targets
+        self.secstruct_multiplier = secstruct_multiplier
+           
+    def call(self, inputs):
+        return self._phase_shift(super(sec_struct, self).call(inputs))
+
+    def compute_output_shape(self, input_shape):
+        unshifted = super(sec_struct, self).compute_output_shape(input_shape)
+        return (unshifted[0], self.r*unshifted[1], self.r*unshifted[2], int(unshifted[3]/(self.r*self.r)))
+
+class ResidualDenseBlock(Model):
+    def __init__(self, num_G):
+        def initrdb(self,num_G):
+           
+    def call(self, inputs):
+        def ca(self,inputs):
+        
+class RDN(Model):
+    def __init__(self, num_G, channels, scale):
+        def initrdn(self,num_G,channels,scale):
+        
+    def call(self, inputs):
+        def ca(self,inputs):
