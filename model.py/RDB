@@ -1,0 +1,12 @@
+def initrdb(self,num_G):
+
+        super(ResidualDenseBlock, self).__init__()
+        self.num_G = num_G
+        self.c1 = Conv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same')
+        self.c2 = Conv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same                
+        self.c3 = Conv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same')
+        self.c4 = Conv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same')
+        self.c5 = Conv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same')
+        self.c6 = CConv2D(filters=num_G, kernel_initializer=he_normal(), kernel_size=(3, 3), activation='relu',padding='same')
+        self.c = Conv2D(filters=64, kernel_initializer=he_normal(), kernel_size=(1, 1), padding='same')
+Footer
