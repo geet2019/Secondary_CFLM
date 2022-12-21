@@ -1,0 +1,285 @@
+"""
+# Lint as: python3.
+# Copyright 2022 Author : Geethu S 
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License."""
+
+
+#8-state to 3-state secondary structure 
+from Bio.PDB import PDBParser
+from Bio.PDB.DSSP import DSSP
+from Bio.PDB import PDBList
+
+# parse structure
+p = PDBParser()
+for i in pdb_list:
+    structure = p.get_structure(i, './pdb%s.ent' % i)
+    # use only the first model
+    model = structure[0]
+    # calculate DSSP
+    dssp = DSSP(model, './pdb%s.ent' % i, file_type='PDB')
+    # extract sequence and secondary structure from the DSSP tuple
+    sequence = ''
+    sec_structure = ''
+    for z in range(len(dssp)):
+        a_key = list(dssp.keys())[z]
+        sequence += dssp[a_key][1]
+        sec_structure += dssp[a_key][2]
+
+    # if desired, convert DSSP's 8-state assignments into 3-state [C - coil, E - extended (beta-strand), H - helix]
+    sec_structure = sec_structure.replace('-', 'C')
+    sec_structure = sec_structure.replace('I', 'C')
+    sec_structure = sec_structure.replace('T', 'C')
+    sec_structure = sec_structure.replace('S', 'C')
+    sec_structure = sec_structure.replace('G', 'H')
+    sec_structure = sec_structure.replace('B', 'E')
+
+# predicting 3-state secondary structure 
+import numpy as np 
+import csv
+from collections import defaultdict
+import os
+
+states = {'H': 0,
+           'G': 0,
+            'I': 0,
+            'B': 1,
+            'E': 1,
+             'T': 2,
+              'S': 2,
+              '-': 2,
+              'X': 3,
+              'Y': 3}
+
+
+def load_protvec(filename):
+        protvec = []
+        key_aa = {}
+        count = 0
+        with open(filename, "rb") as csvfile:
+          protvec_rdr = csv.reader(csvfile, delimiter='\t')
+          for k, row in enumerate(protvec_rdr):
+            if k == 0:
+              continue
+            protvec.append([float(x) for x in row[1:]])
+            key_aa[row[0]] = count
+            count = count + 1
+
+        protvec.append([0.0] * 100)
+        key_aa["zero"] = count
+        return protvec, key_aa
+
+
+def prepare_data(input_dir, ouput_dir):
+        protvec, key_aa = load_protvec("protVec_100d_3grams.csv")
+        protvec = np.asarray(protvec, dtype=np.float32)
+        dt = []
+        lbl = []
+        seq_len = []
+        wt_msk = []
+
+        for text_file in os.listdir(input_dir):
+          fi = open(os.path.join(input_dir, text_file), "r")
+          input_length = 0
+          input_aa = ''
+          for line in fi:
+            if '>' in line:
+              if input_length != 0:
+                break
+            else:
+              input_aa = input_aa + line.rstrip()
+              input_length = input_length + len(line.rstrip())
+
+          input_vector = []
+          check = True
+          input_vector.append(key_aa["<unk>"])
+          for i in range(1, input_length - 1):
+            if input_aa[i-1:i+2] not in key_aa:
+              check = False
+              break
+            input_vector.append(key_aa[input_aa[i-1:i+2]])
+
+          if check == False:
+            continue
+          input_vector.append(key_aa["<unk>"])
+
+          file_id = text_file.split('.')[0].lower()
+          fo = open(os.path.join(ouput_dir, file_id + ".8.consensus.dssp"), "r")
+          output_state = ''
+          output_length = 0
+          for line in fo:
+            if '>' in line:
+              if output_length != 0:
+                break
+            else:
+              output_state = output_state + line.rstrip()
+              output_length = output_length + len(line.rstrip())
+          label_tmp = [states[x] for x in output_state]
+          
+          input_vector_tmp = []
+          for i in range(len(label_tmp)):
+            if label_tmp[i] == 3:
+              input_length = input_length - 1
+              continue
+            else:
+              input_vector_tmp.append(input_vector[i])
+
+          label_tmp = [x for x in label_tmp if x != 3]
+
+          for i in range(input_length, seq_max_len):
+            input_vector_tmp.append(key_aa["zero"])
+            lbl_tmp.append(1)
+
+          if len(input_vector_tmp) != 930:
+            continue
+
+          wt_msk_tmp = []
+          for l in lbl_tmp:
+            if l == 0:
+              wt_msk_tmp.append(0.35)
+            if l == 1:
+              wt_msk_tmp.append(0.5)
+            if l == 2:
+              wt_msk_tmp.append(0.35)
+
+          wt_msk.append(weight_mask_tmp)
+          lbl.append(label_tmp)
+          dt.append(input_vector_tmp)
+          seq_len.append(input_length)
+
+          fi.close()
+          fo.close()
+        msk = []
+        for length in seq_len:
+          msk.append([1] * length + [0] * (930 - length))
+
+        return dt, lbl, msk, seq_len, wt_msk, protvec, key_aa
+   # Three state code
+import numpy as np 
+import csv
+from collections import defaultdict
+import os
+
+threestates = {'H': 0,
+					'G': 0,
+					'I': 0,
+					'B': 1,
+					'E': 1,
+					'T': 2,
+					'S': 2,
+					'-': 2,
+					'X': 3,
+					'Y': 3}
+
+def load_prot(filename):
+	prot = []
+	aa = {}
+	count = 0
+	with open(filename, "r") as csvfile:
+		prot_rdr = csv.reader(csvfile, delimiter='\t')
+		for k, row in enumerate(prot_rdr):
+			if k == 0:
+				continue
+			prot.append([float(x) for x in row[1:]])
+			aa[row[0]] = count
+			count = count + 1
+
+	prot.append([0.0] * 100)
+	aa["zero"] = count
+	return prot, aa
+
+
+def prepare_data(input_dir, ouput_dir):
+	prot, aa = load_prot("prot_100d_3grams.csv")
+	prot = np.asarray(prot, dtype=np.float32)
+	data = []
+	labl = []
+	seq_len = []
+	wt_msk = []
+
+	for text_file in os.listdir(input_dir):
+		fi = open(os.path.join(input_dir, text_file), "r")
+		input_length = 0
+		input_aa = ''
+		for line in fi:
+			if '>' in line:
+				if input_length != 0:
+					break
+			else:
+				input_aa = input_aa + line.rstrip()
+				input_length = input_length + len(line.rstrip())
+
+		input_vector = []
+		check = True
+		input_vector.append(key_aa["<unk>"])
+		for i in range(1, input_length - 1):
+			if input_aa[i-1:i+2] not in key_aa:
+				check = False
+				break
+			input_vector.append(key_aa[input_aa[i-1:i+2]])
+
+		if check == False:
+			continue
+		input_vector.append(key_aa["<unk>"])
+
+		file_id = text_file.split('.')[0].lower()
+		fo = open(os.path.join(ouput_dir, file_id + ".8.consensus.dssp"), "r")
+		output_state = ''
+		output_length = 0
+		for line in fo:
+			if '>' in line:
+				if output_length != 0:
+					break
+			else:
+				output_state = output_state + line.rstrip()
+				output_length = output_length + len(line.rstrip())
+		label_tmp = [states[x] for x in output_state]
+		
+		input_vector_tmp = []
+		for i in range(len(label_tmp)):
+			if label_tmp[i] == 3:
+				input_length = input_length - 1
+				continue
+			else:
+				input_vector_tmp.append(input_vector[i])
+
+		label_tmp = [x for x in label_tmp if x != 3]
+
+		for i in range(input_length, seq_max_len):
+			input_vector_tmp.append(key_aa["zero"])
+			label_tmp.append(1)
+
+		if len(input_vector_tmp) != 930:
+			continue
+
+		weight_mask_tmp = []
+		for l in label_tmp:
+			if l == 0:
+				wt_msk_tmp.append(0.35)
+			if l == 1:
+				wt_msk_tmp.append(0.5)
+			if l == 2:
+				wt_msk_tmp.append(0.35)
+
+		wt_msk.append(weight_mask_tmp)
+		label.append(label_tmp)
+		data.append(input_vector_tmp)
+		seq_len.append(input_length)
+
+		fi.close()
+		fo.close()
+	msk = []
+	for length in seq_len:
+	  msk.append([1] * length + [0] * (930 - length))
+
+	return data, label, msk, seq_leng, wt_msk, prot, aa
