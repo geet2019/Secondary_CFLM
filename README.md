@@ -1,5 +1,5 @@
 
-This code can't be used to predict structure of an arbitrary protein sequence. It can be used to predict structure only on the CASP13 and CASP 14 TBM target dataset (links below).
+This code can't be used to predict structure of an arbitrary protein sequence. It can be used to predict structure only on the CASP13 and CASP 14 TBM target dataset.
 
 Dependencies
 
